@@ -1,0 +1,29 @@
+<?php
+
+function entity_moderation_install(){
+	
+	$mail_templates = Utils_Moderation::get_mail_templates();
+	
+	foreach($mail_templates as $mail_template){ 
+		db_insert("pets")
+			->fields(array(
+					"name" => $mail_template["name"],
+					"status" => $mail_template["status"],
+					"title" => $mail_template["title"],
+					"subject" => $mail_template["subject"],
+					"mail_body" => $mail_template["body"]
+				))
+			->execute();
+	}
+}
+
+function entity_moderation_uninstall(){
+	
+	$mail_templates = Utils_Moderation::get_mail_templates();
+	
+	foreach($mail_templates as $mail_template){ 
+		db_delete("pets")
+			->condition("name", $mail_template["name"])
+			->execute();
+	}
+}

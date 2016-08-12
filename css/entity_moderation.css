@@ -1,0 +1,9 @@
+@CHARSET "UTF-8";
+
+th.entity_column {
+  width: 45%
+}
+
+th.operations_column {
+  width: 25%
+}

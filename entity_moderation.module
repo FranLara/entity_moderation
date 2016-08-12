@@ -1,0 +1,157 @@
+<?php
+
+require_once 'utils/required.php';
+
+define("AUTHOR_MAIL", "author");
+define("MAIL_ENTITY", "mail_entity_");
+define("MODERATION_NODE_MAIL", "moderation_node_mail");
+define("ACCEPT_NODE_MAIL", "accept_node_mail");
+define("REFUSE_NODE_MAIL", "refused_node_mail");
+define("MORE_INFO_MAIL", "more_info_mail");
+
+/**
+ * Implements hook_menu();
+ */
+function entity_moderation_menu() {
+
+  $items['admin/config/entity/moderation'] = array(
+    'title' => t('Entity Moderation'),
+    'description' => t('Administer the settings of the Entities to be moderated.'),
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administration entity moderation'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  $items['admin/config/entity/moderation/entities'] = array(
+    'title' => t('Administration entity moderation'),
+    'description' => t('Lists of roles that will receive a notification for moderating and entities for checking if should be moderated.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('entity_moderation_main_settings'),
+    'access arguments' => array('administration entity moderation'),
+    'file' => 'entity_moderation.admin.inc',
+    'file path' => drupal_get_path('module', 'entity_moderation'),
+  );
+  $items['admin/config/entity/moderation/entities/main'] = array(
+    'title' => t('Administration'),
+    'page arguments' => array('entity_moderation_main_settings'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/config/entity/moderation/entities/nodes'] = array(
+    'title' => t('Manage nodes'),
+    'description' => t('Manage node fields to be moderated.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('entity_moderation_node_settings'),
+    'access arguments' => array('administration entity moderation'),
+    'file' => 'entity_moderation.admin.inc',
+    'file path' => drupal_get_path('module', 'entity_moderation'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/structure/entity/moderation'] = array(
+    'title' => t('Entity moderation'),
+    'description' => t('Entity moderation menu.'),
+    'access arguments' => array("moderation entity moderation"),
+  );
+  $items['admin/structure/entity/moderation/list'] = array(
+    'title' => t('Entities to moderate'),
+    'description' => t('List of entities to moderate.'),
+    'page callback' => 'entity_moderation_list',
+    'access arguments' => array("moderation entity moderation"),
+  );
+  $items['entity/moderation/%/%/%'] = array(
+    'title' => t('Moderation of Entity'),
+    'page callback' => 'entity_moderation_moderation',
+    'page arguments' => array (2,3,4),
+    'access arguments' => array("moderation entity moderation"),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/structure/entity/moderation/action/%/%/%'] = array(
+    'title callback' => t("entity_moderation_action_title"),
+    'title arguments' => array (5,6,7),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array ("entity_moderation_action",5,6,7),
+    'access arguments' => array("moderation entity moderation"),
+  );
+  $items['admin/structure/entity/moderation/more/info/%/%'] = array(
+    'title callback' => t("entity_moderation_more_info_title"),
+    'title arguments' => array (6,7),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array ("entity_moderation_more_info",6,7),
+    'access arguments' => array("moderation entity moderation"),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function entity_moderation_permission() {
+  return array(
+    'administration entity moderation' => array(
+      'title' => t('Administration Entity Moderation'),
+      'description' => t('Entity moderation administration.'),
+    ),
+    'moderation entity moderation' => array(
+      'title' => t('Entity Moderation'),
+      'description' => t('Moderate entities.'),
+    ),
+    'bypass entity moderation' => array(
+      'title' => t('Bypass Entity Moderation'),
+      'description' => t('Avoid the Entity moderation.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_entity_insert()
+ */
+function entity_moderation_entity_insert($entity, $type){
+  Utils_Moderation::check_moderation_entity($entity, $type);
+}
+
+/**
+ * Implements hook_mail()
+ */
+function entity_moderation_mail($key, &$message, $params){
+  switch($key){
+    case MORE_INFO_MAIL:
+        $mail = $params["mail"];
+        $message = Utils_Moderation::prepare_more_info_mail($message, $mail);
+    break;
+  }
+}
+
+function entity_moderation_list(){
+  return Utils_Page::get_moderation_list();
+}
+
+function entity_moderation_moderation($type, $id, $action){
+
+  Utils_Moderation::moderate_entity($type, $id, $action);
+
+  drupal_goto("/admin/structure/entity/moderation/list");
+}
+
+function entity_moderation_action_title($type, $id, $action) {
+  return Utils_Page::get_action_title($type, $id, $action);
+}
+
+function entity_moderation_action($form, &$form_submit, $type, $id, $action){
+  return Utils_Page::get_action_form($action);
+}
+
+function entity_moderation_action_submit(&$form, &$form_state) {
+
+  if(!empty($form["message"]["#value"])){
+    $message = $form["message"]["#value"];
+  }
+  else{
+    $message = NULL;
+  }
+
+  $type = $form_state["build_info"]["args"][0];
+  $id = $form_state["build_info"]["args"][1];
+  $action = $form_state["build_info"]["args"][2];
+
+  $form_state["redirect"] = Utils_Moderation::execute_action($type, $id, $action, $message);
+}

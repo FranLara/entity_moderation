@@ -1,0 +1,8 @@
+name = Entity Moderation
+description = Entity Moderation module
+dependencies[] = pet
+dependencies[] = mimemail
+core = 7.x
+package = Berlinerds Tools
+configure = admin/config/entity/moderation/entities
+stylesheets[all][] = css/entity_moderation.css
